@@ -7,7 +7,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="日课">
     <title>日课</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -594,17 +593,19 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
         // ==========================================
         // CONFIG - 填入你的 Supabase 项目信息
         // ==========================================
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
         const SUPABASE_URL = 'https://dcbubudyfdtjrmhrtnvb.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjYnVidWR5ZmR0anJtaHJ0bnZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mzc3NjIsImV4cCI6MjA5NDIxMzc2Mn0.UGKrLTTrt8HYYG792GRE8ISAFc4w3EAFMopD40t4WAA';
 
         // ==========================================
         // Supabase Client
         // ==========================================
-        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null;
         let entriesCache = [];
@@ -1010,6 +1011,15 @@
             const days = ['日', '一', '二', '三', '四', '五', '六'];
             return `${y}年${m}月${d}日 周${days[date.getDay()]}`;
         }
+
+        // ========== Expose to onclick handlers ==========
+        window.loginWithEmail = loginWithEmail;
+        window.logout = logout;
+        window.saveEntry = saveEntry;
+        window.switchTab = switchTab;
+        window.openDetail = openDetail;
+        window.closeDetail = closeDetail;
+        window.deleteEntry = deleteEntry;
 
         // ========== Init ==========
         checkAuth();
