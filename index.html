@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="日课">
+    <title>日课</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --bg: #FAF8F5;
+            --card: rgba(255,255,255,0.7);
+            --card-solid: #FFFFFF;
+            --text: #1a1a1a;
+            --text-secondary: #666;
+            --text-tertiary: #999;
+            --accent: #333;
+            --border: rgba(0,0,0,0.06);
+            --orange: #E67E22;
+            --green: #27AE60;
+            --tab-bg: #FFFFFF;
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow-x: hidden;
+        }
+
+        /* Login Page */
+        .login-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: 40px 20px;
+        }
+
+        .login-page.hidden { display: none; }
+        .app-container.hidden { display: none; }
+
+        .login-logo {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .login-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .login-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .login-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 10px;
+            background: #24292e;
+            color: white;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .login-btn:active {
+            transform: scale(0.97);
+            opacity: 0.9;
+        }
+
+        .login-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .login-footer {
+            margin-top: 24px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* User bar */
+        .user-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            padding-top: calc(12px + env(safe-area-inset-top, 0px));
+            background: var(--bg);
+            z-index: 50;
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .user-name {
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .logout-btn {
+            border: none;
+            background: none;
+            color: var(--text-tertiary);
+            font-size: 12px;
+            cursor: pointer;
+            padding: 4px 8px;
+        }
+
+        .sync-status {
+            font-size: 11px;
+            color: var(--green);
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            background: var(--tab-bg);
+            border-top: 1px solid var(--border);
+            padding: 8px 0 calc(8px + var(--safe-bottom));
+            z-index: 100;
+        }
+
+        .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 4px 0;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            border: none;
+            background: none;
+            font-size: 10px;
+            color: var(--text-tertiary);
+        }
+
+        .tab-item.active { color: var(--accent); }
+        .tab-item svg { width: 22px; height: 22px; }
+
+        /* Pages */
+        .page {
+            display: none;
+            padding: 60px 20px calc(80px + var(--safe-bottom));
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        .page.active { display: block; }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .page-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        /* Question Card */
+        .question-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .question-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .question-number {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: "STSong", "Songti SC", serif;
+        }
+
+        .question-title { font-size: 15px; font-weight: 500; }
+
+        .question-hint {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 10px;
+            padding-left: 30px;
+        }
+
+        .question-input {
+            width: 100%;
+            min-height: 80px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--card-solid);
+            font-size: 15px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+            color: var(--text);
+            transition: border-color 0.2s;
+        }
+
+        .question-input:focus { border-color: rgba(0,0,0,0.15); }
+        .question-input::placeholder { color: var(--text-tertiary); }
+
+        /* Save Button */
+        .save-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: var(--accent);
+            color: white;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .save-btn:active { transform: scale(0.98); opacity: 0.9; }
+        .save-btn.saved { background: var(--green); }
+        .save-btn:disabled { background: #ccc; cursor: default; }
+
+        /* History */
+        .entry-list { list-style: none; }
+
+        .entry-item {
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .entry-item:active { opacity: 0.6; }
+
+        .entry-date {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .entry-complete {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+        }
+
+        .entry-preview {
+            font-size: 14px;
+            color: var(--text);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--card-solid);
+            font-size: 14px;
+            outline: none;
+            margin-bottom: 16px;
+            font-family: inherit;
+        }
+
+        .search-box:focus { border-color: rgba(0,0,0,0.15); }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-tertiary);
+        }
+
+        .empty-state-icon { font-size: 40px; margin-bottom: 12px; }
+        .empty-state-text { font-size: 15px; }
+
+        /* Detail View */
+        .detail-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg);
+            z-index: 200;
+            padding: 0 20px calc(20px + var(--safe-bottom));
+            overflow-y: auto;
+            display: none;
+        }
+
+        .detail-overlay.active { display: block; }
+
+        .detail-header {
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            padding: 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        .back-btn {
+            border: none;
+            background: none;
+            font-size: 14px;
+            color: var(--accent);
+            cursor: pointer;
+            padding: 8px 0;
+            font-weight: 500;
+        }
+
+        .detail-date { font-size: 13px; color: var(--text-secondary); }
+
+        .delete-btn {
+            margin-left: auto;
+            border: none;
+            background: none;
+            color: #E74C3C;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 8px;
+        }
+
+        .detail-section { margin-bottom: 20px; }
+
+        .detail-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .detail-textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--card-solid);
+            font-size: 15px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+            color: var(--text);
+        }
+
+        /* Weekly Review */
+        .stats-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            background: var(--card);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 24px; font-weight: 600; }
+        .stat-unit { font-size: 12px; color: var(--text-secondary); }
+        .stat-label { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+        .stat-divider { width: 1px; height: 36px; background: var(--border); }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .word-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+
+        .word-tag {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(230, 126, 34, 0.1);
+            color: var(--orange);
+        }
+
+        .week-entry {
+            padding: 12px;
+            background: var(--card);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .week-entry-day { font-size: 11px; color: var(--text-tertiary); font-weight: 500; margin-bottom: 4px; }
+
+        .week-entry-text {
+            font-size: 13px;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-tertiary);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div class="login-page" id="login-page">
+        <div class="login-logo">📖</div>
+        <h1 class="login-title">日课</h1>
+        <p class="login-desc">每日三省吾身<br>记过、省因、定改</p>
+        <div style="width:100%;max-width:300px;">
+            <input type="email" id="login-email" class="search-box" placeholder="邮箱" style="margin-bottom:10px;">
+            <input type="password" id="login-password" class="search-box" placeholder="密码（至少6位）" style="margin-bottom:16px;">
+            <button class="login-btn" style="width:100%;justify-content:center;" onclick="loginWithEmail()">登录 / 注册</button>
+            <p id="login-error" style="color:#E74C3C;font-size:12px;text-align:center;margin-top:10px;"></p>
+        </div>
+        <p class="login-footer">首次输入邮箱密码会自动注册<br>数据安全存储在云端，跨设备同步</p>
+    </div>
+
+    <!-- App Container -->
+    <div class="app-container hidden" id="app-container">
+        <!-- User Bar -->
+        <div class="user-bar">
+            <span class="user-name" id="user-name"></span>
+            <span class="sync-status" id="sync-status"></span>
+            <button class="logout-btn" onclick="logout()">登出</button>
+        </div>
+
+        <!-- Today Page -->
+        <div class="page active" id="page-today">
+            <h1 class="page-title">日课</h1>
+            <p class="page-subtitle" id="today-date"></p>
+
+            <div class="question-card">
+                <div class="question-header">
+                    <span class="question-number">一</span>
+                    <span class="question-title">今天什么事做得不好？</span>
+                </div>
+                <p class="question-hint">记过 - 具体描述事件</p>
+                <textarea class="question-input" id="q1" placeholder="例如：会议上没有及时表达不同意见..."></textarea>
+            </div>
+
+            <div class="question-card">
+                <div class="question-header">
+                    <span class="question-number">二</span>
+                    <span class="question-title">为什么会这样？</span>
+                </div>
+                <p class="question-hint">省因 - 分析根本原因</p>
+                <textarea class="question-input" id="q2" placeholder="例如：担心得罪人，没有准备好论据..."></textarea>
+            </div>
+
+            <div class="question-card">
+                <div class="question-header">
+                    <span class="question-number">三</span>
+                    <span class="question-title">下次遇到同样的事，我怎么做？</span>
+                </div>
+                <p class="question-hint">定改 - 明确行动方案</p>
+                <textarea class="question-input" id="q3" placeholder="例如：提前准备数据，用事实而非观点说话..."></textarea>
+            </div>
+
+            <button class="save-btn" id="save-btn" onclick="saveEntry()">保存日课</button>
+        </div>
+
+        <!-- History Page -->
+        <div class="page" id="page-history">
+            <h1 class="page-title">往日</h1>
+            <p class="page-subtitle">所有日课记录</p>
+            <input type="text" class="search-box" placeholder="搜索日课内容..." oninput="renderHistory(this.value)">
+            <ul class="entry-list" id="entry-list"></ul>
+        </div>
+
+        <!-- Weekly Review Page -->
+        <div class="page" id="page-weekly">
+            <h1 class="page-title">周省</h1>
+            <p class="page-subtitle" id="week-range"></p>
+            <div id="weekly-content"></div>
+        </div>
+
+        <!-- Detail Overlay -->
+        <div class="detail-overlay" id="detail-overlay">
+            <div class="detail-header">
+                <button class="back-btn" onclick="closeDetail()">← 返回</button>
+                <span class="detail-date" id="detail-date"></span>
+                <button class="delete-btn" onclick="deleteEntry()">删除</button>
+            </div>
+            <div class="detail-section">
+                <div class="detail-label">① 做得不好的事</div>
+                <textarea class="detail-textarea" id="detail-q1" oninput="autoSaveDetail()"></textarea>
+            </div>
+            <div class="detail-section">
+                <div class="detail-label">② 原因分析</div>
+                <textarea class="detail-textarea" id="detail-q2" oninput="autoSaveDetail()"></textarea>
+            </div>
+            <div class="detail-section">
+                <div class="detail-label">③ 改进方案</div>
+                <textarea class="detail-textarea" id="detail-q3" oninput="autoSaveDetail()"></textarea>
+            </div>
+        </div>
+
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <button class="tab-item active" onclick="switchTab('today')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
+                    <path d="M19.5 12.5v5.25A2.25 2.25 0 0117.25 20H5.25A2.25 2.25 0 013 17.75V5.75A2.25 2.25 0 015.25 3.5h5.25"/>
+                </svg>
+                <span>日课</span>
+            </button>
+            <button class="tab-item" onclick="switchTab('history')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>
+                </svg>
+                <span>往日</span>
+            </button>
+            <button class="tab-item" onclick="switchTab('weekly')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+                    <path d="M12 15.75h.008v.008H12v-.008z"/>
+                </svg>
+                <span>周省</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIG - 填入你的 Supabase 项目信息
+        // ==========================================
+        const SUPABASE_URL = 'https://dcbubudyfdtjrmhrtnvb.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjYnVidWR5ZmR0anJtaHJ0bnZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mzc3NjIsImV4cCI6MjA5NDIxMzc2Mn0.UGKrLTTrt8HYYG792GRE8ISAFc4w3EAFMopD40t4WAA';
+
+        // ==========================================
+        // Supabase Client
+        // ==========================================
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+        let entriesCache = [];
+
+        // ========== Auth ==========
+        async function loginWithEmail() {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            const errEl = document.getElementById('login-error');
+            errEl.textContent = '';
+
+            if (!email || !password) {
+                errEl.textContent = '请输入邮箱和密码';
+                return;
+            }
+            if (password.length < 6) {
+                errEl.textContent = '密码至少6位';
+                return;
+            }
+
+            // Try sign in first
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (!error) return; // success, onAuthStateChange will handle it
+
+            // If invalid credentials, try sign up
+            if (error.message.includes('Invalid login credentials')) {
+                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+                if (signUpError) {
+                    errEl.textContent = signUpError.message;
+                } else if (signUpData.user && !signUpData.session) {
+                    errEl.textContent = '注册成功！请查收验证邮件后再登录';
+                    errEl.style.color = 'var(--green)';
+                }
+            } else {
+                errEl.textContent = error.message;
+            }
+        }
+
+        async function logout() {
+            await supabase.auth.signOut();
+            currentUser = null;
+            showLogin();
+        }
+
+        async function checkAuth() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                showApp();
+            } else {
+                showLogin();
+            }
+
+            // Listen for auth changes (OAuth callback)
+            supabase.auth.onAuthStateChange((event, session) => {
+                if (event === 'SIGNED_IN' && session) {
+                    currentUser = session.user;
+                    showApp();
+                } else if (event === 'SIGNED_OUT') {
+                    currentUser = null;
+                    showLogin();
+                }
+            });
+        }
+
+        function showLogin() {
+            document.getElementById('login-page').classList.remove('hidden');
+            document.getElementById('app-container').classList.add('hidden');
+        }
+
+        function showApp() {
+            document.getElementById('login-page').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            const name = currentUser.user_metadata?.user_name || currentUser.email || '';
+            document.getElementById('user-name').textContent = name;
+            initToday();
+        }
+
+        // ========== Database Operations ==========
+        async function fetchEntries() {
+            const { data, error } = await supabase
+                .from('diary_entries')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('date', { ascending: false });
+
+            if (error) {
+                console.error('Fetch error:', error);
+                return [];
+            }
+            entriesCache = data || [];
+            return entriesCache;
+        }
+
+        async function upsertEntry(date, q1, q2, q3) {
+            setSyncStatus('syncing');
+            const { error } = await supabase
+                .from('diary_entries')
+                .upsert({
+                    user_id: currentUser.id,
+                    date: date,
+                    what_went_wrong: q1,
+                    why_it_happened: q2,
+                    how_to_improve: q3,
+                    updated_at: new Date().toISOString()
+                }, {
+                    onConflict: 'user_id,date'
+                });
+
+            if (error) {
+                console.error('Save error:', error);
+                setSyncStatus('error');
+                return false;
+            }
+            setSyncStatus('saved');
+            return true;
+        }
+
+        async function deleteEntryFromDB(date) {
+            const { error } = await supabase
+                .from('diary_entries')
+                .delete()
+                .eq('user_id', currentUser.id)
+                .eq('date', date);
+
+            return !error;
+        }
+
+        function setSyncStatus(status) {
+            const el = document.getElementById('sync-status');
+            if (status === 'syncing') {
+                el.textContent = '同步中...';
+                el.style.color = 'var(--text-tertiary)';
+            } else if (status === 'saved') {
+                el.textContent = '已同步';
+                el.style.color = 'var(--green)';
+                setTimeout(() => { el.textContent = ''; }, 2000);
+            } else if (status === 'error') {
+                el.textContent = '同步失败';
+                el.style.color = '#E74C3C';
+            }
+        }
+
+        // ========== Today ==========
+        function todayKey() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        async function initToday() {
+            document.getElementById('today-date').textContent = formatDate(new Date());
+            await fetchEntries();
+            const today = entriesCache.find(e => e.date === todayKey());
+            if (today) {
+                document.getElementById('q1').value = today.what_went_wrong || '';
+                document.getElementById('q2').value = today.why_it_happened || '';
+                document.getElementById('q3').value = today.how_to_improve || '';
+            } else {
+                document.getElementById('q1').value = '';
+                document.getElementById('q2').value = '';
+                document.getElementById('q3').value = '';
+            }
+        }
+
+        async function saveEntry() {
+            const q1 = document.getElementById('q1').value.trim();
+            const q2 = document.getElementById('q2').value.trim();
+            const q3 = document.getElementById('q3').value.trim();
+
+            if (!q1 && !q2 && !q3) return;
+
+            const btn = document.getElementById('save-btn');
+            btn.disabled = true;
+            btn.textContent = '保存中...';
+
+            const success = await upsertEntry(todayKey(), q1, q2, q3);
+
+            if (success) {
+                btn.textContent = '✓ 已保存';
+                btn.classList.add('saved');
+                await fetchEntries();
+            } else {
+                btn.textContent = '保存失败，请重试';
+            }
+
+            setTimeout(() => {
+                btn.textContent = '保存日课';
+                btn.classList.remove('saved');
+                btn.disabled = false;
+            }, 2000);
+        }
+
+        // ========== History ==========
+        let currentDetailDate = null;
+
+        async function renderHistory(keyword = '') {
+            if (entriesCache.length === 0) await fetchEntries();
+
+            const list = document.getElementById('entry-list');
+            const filtered = keyword
+                ? entriesCache.filter(e =>
+                    ((e.what_went_wrong || '') + (e.why_it_happened || '') + (e.how_to_improve || ''))
+                        .toLowerCase().includes(keyword.toLowerCase()))
+                : entriesCache;
+
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📖</div>
+                        <div class="empty-state-text">${keyword ? '未找到相关记录' : '尚无日课记录<br>开始今天的第一篇日课吧'}</div>
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = filtered.map(entry => {
+                const complete = entry.what_went_wrong && entry.why_it_happened && entry.how_to_improve;
+                return `
+                    <li class="entry-item" onclick="openDetail('${entry.date}')">
+                        <div class="entry-date">
+                            ${formatDate(new Date(entry.date + 'T00:00:00'))}
+                            ${complete ? '<span class="entry-complete"></span>' : ''}
+                        </div>
+                        <div class="entry-preview">${entry.what_went_wrong || '(未填写)'}</div>
+                    </li>`;
+            }).join('');
+        }
+
+        function openDetail(date) {
+            currentDetailDate = date;
+            const entry = entriesCache.find(e => e.date === date);
+            if (!entry) return;
+
+            document.getElementById('detail-date').textContent = formatDate(new Date(date + 'T00:00:00'));
+            document.getElementById('detail-q1').value = entry.what_went_wrong || '';
+            document.getElementById('detail-q2').value = entry.why_it_happened || '';
+            document.getElementById('detail-q3').value = entry.how_to_improve || '';
+            document.getElementById('detail-overlay').classList.add('active');
+        }
+
+        function closeDetail() {
+            document.getElementById('detail-overlay').classList.remove('active');
+            currentDetailDate = null;
+            renderHistory();
+        }
+
+        let saveTimeout = null;
+        function autoSaveDetail() {
+            if (!currentDetailDate) return;
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(async () => {
+                const q1 = document.getElementById('detail-q1').value;
+                const q2 = document.getElementById('detail-q2').value;
+                const q3 = document.getElementById('detail-q3').value;
+                await upsertEntry(currentDetailDate, q1, q2, q3);
+                // Update cache
+                const idx = entriesCache.findIndex(e => e.date === currentDetailDate);
+                if (idx >= 0) {
+                    entriesCache[idx].what_went_wrong = q1;
+                    entriesCache[idx].why_it_happened = q2;
+                    entriesCache[idx].how_to_improve = q3;
+                }
+            }, 1000);
+        }
+
+        async function deleteEntry() {
+            if (!currentDetailDate) return;
+            if (!confirm('确定删除这条日课？')) return;
+
+            const success = await deleteEntryFromDB(currentDetailDate);
+            if (success) {
+                entriesCache = entriesCache.filter(e => e.date !== currentDetailDate);
+                closeDetail();
+            } else {
+                alert('删除失败，请重试');
+            }
+        }
+
+        // ========== Weekly ==========
+        function renderWeekly() {
+            const now = new Date();
+            const day = now.getDay() || 7;
+            const monday = new Date(now);
+            monday.setDate(now.getDate() - day + 1);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+
+            document.getElementById('week-range').textContent =
+                `${monday.getMonth()+1}月${monday.getDate()}日 - ${sunday.getMonth()+1}月${sunday.getDate()}日`;
+
+            const weekEntries = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(monday);
+                d.setDate(monday.getDate() + i);
+                const key = d.toISOString().split('T')[0];
+                const entry = entriesCache.find(e => e.date === key);
+                if (entry) weekEntries.push(entry);
+            }
+
+            const complete = weekEntries.filter(e => e.what_went_wrong && e.why_it_happened && e.how_to_improve).length;
+
+            const allText = weekEntries.map(e =>
+                `${e.what_went_wrong || ''} ${e.why_it_happened || ''} ${e.how_to_improve || ''}`
+            ).join(' ');
+            const words = extractWords(allText);
+
+            let html = `
+                <div class="stats-card">
+                    <div class="stat-item">
+                        <div><span class="stat-value">${weekEntries.length}</span><span class="stat-unit"> 天</span></div>
+                        <div class="stat-label">已记录</div>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <div><span class="stat-value">${7 - weekEntries.length}</span><span class="stat-unit"> 天</span></div>
+                        <div class="stat-label">未记录</div>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <div><span class="stat-value">${complete}</span><span class="stat-unit"> 篇</span></div>
+                        <div class="stat-label">完整</div>
+                    </div>
+                </div>`;
+
+            if (words.length > 0) {
+                html += `<div class="section-title">🔁 本周重复出现的关键词</div>
+                    <div class="word-tags">
+                        ${words.slice(0, 8).map(([w, c]) => `<span class="word-tag">${w} (${c})</span>`).join('')}
+                    </div>`;
+            }
+
+            if (weekEntries.length > 0) {
+                html += `<div class="section-title">本周日课</div>`;
+                html += weekEntries.map(entry => {
+                    const d = new Date(entry.date + 'T00:00:00');
+                    const dayName = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
+                    return `
+                        <div class="week-entry" onclick="openDetail('${entry.date}')">
+                            <div class="week-entry-day">周${dayName}</div>
+                            <div class="week-entry-text">${entry.what_went_wrong || '(未填写)'}</div>
+                        </div>`;
+                }).join('');
+            } else {
+                html += `<div class="empty-state">
+                    <div class="empty-state-icon">📅</div>
+                    <div class="empty-state-text">本周尚无记录<br>坚持每天写日课，周末来这里回顾</div>
+                </div>`;
+            }
+
+            document.getElementById('weekly-content').innerHTML = html;
+        }
+
+        function extractWords(text) {
+            const segments = text.replace(/[，。！？、；：""''（）\s\n]/g, ' ').split(' ').filter(s => s.length >= 2);
+            const counts = {};
+            segments.forEach(w => {
+                if (w.length >= 2 && w.length <= 6) {
+                    counts[w] = (counts[w] || 0) + 1;
+                }
+            });
+            return Object.entries(counts)
+                .filter(([_, c]) => c >= 2)
+                .sort((a, b) => b[1] - a[1]);
+        }
+
+        // ========== Navigation ==========
+        function switchTab(tab) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+
+            document.getElementById(`page-${tab}`).classList.add('active');
+            document.querySelectorAll('.tab-item')[
+                tab === 'today' ? 0 : tab === 'history' ? 1 : 2
+            ].classList.add('active');
+
+            if (tab === 'history') renderHistory();
+            if (tab === 'weekly') renderWeekly();
+        }
+
+        // ========== Utils ==========
+        function formatDate(date) {
+            const y = date.getFullYear();
+            const m = date.getMonth() + 1;
+            const d = date.getDate();
+            const days = ['日', '一', '二', '三', '四', '五', '六'];
+            return `${y}年${m}月${d}日 周${days[date.getDay()]}`;
+        }
+
+        // ========== Init ==========
+        checkAuth();
+    </script>
+</body>
+</html>
