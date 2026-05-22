@@ -614,6 +614,7 @@
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value;
             const errEl = document.getElementById('login-error');
+            const btn = document.querySelector('.login-btn');
             errEl.textContent = '';
 
             if (!email || !password) {
@@ -625,21 +626,35 @@
                 return;
             }
 
-            // Try sign in first
-            const { data, error } = await db.auth.signInWithPassword({ email, password });
-            if (!error) return; // success, onAuthStateChange will handle it
+            btn.disabled = true;
+            btn.textContent = '请稍候...';
 
-            // If invalid credentials, try sign up
-            if (error.message.includes('Invalid login credentials')) {
-                const { data: signUpData, error: signUpError } = await db.auth.signUp({ email, password });
-                if (signUpError) {
-                    errEl.textContent = signUpError.message;
-                } else if (signUpData.user && !signUpData.session) {
-                    errEl.textContent = '注册成功！请查收验证邮件后再登录';
-                    errEl.style.color = 'var(--green)';
+            try {
+                // Try sign in first
+                const { data, error } = await db.auth.signInWithPassword({ email, password });
+                if (!error) return; // success, onAuthStateChange will handle it
+
+                // If invalid credentials, try sign up
+                if (error.message.includes('Invalid login credentials')) {
+                    const { data: signUpData, error: signUpError } = await db.auth.signUp({ email, password });
+                    if (signUpError) {
+                        errEl.textContent = signUpError.message;
+                    } else if (signUpData.session) {
+                        // autoconfirm enabled, user is logged in directly
+                        return;
+                    } else {
+                        errEl.textContent = '注册成功！请查收验证邮件后再登录';
+                        errEl.style.color = 'var(--green)';
+                    }
+                } else {
+                    errEl.textContent = error.message;
                 }
-            } else {
-                errEl.textContent = error.message;
+            } catch (e) {
+                errEl.textContent = '网络错误，请重试';
+                console.error('Auth error:', e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '登录 / 注册';
             }
         }
 
