@@ -604,8 +604,7 @@
         // ==========================================
         // Supabase Client
         // ==========================================
-        const { createClient } = window.supabase;
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null;
         let entriesCache = [];
@@ -627,12 +626,12 @@
             }
 
             // Try sign in first
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = await db.auth.signInWithPassword({ email, password });
             if (!error) return; // success, onAuthStateChange will handle it
 
             // If invalid credentials, try sign up
             if (error.message.includes('Invalid login credentials')) {
-                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+                const { data: signUpData, error: signUpError } = await db.auth.signUp({ email, password });
                 if (signUpError) {
                     errEl.textContent = signUpError.message;
                 } else if (signUpData.user && !signUpData.session) {
@@ -645,13 +644,13 @@
         }
 
         async function logout() {
-            await supabase.auth.signOut();
+            await db.auth.signOut();
             currentUser = null;
             showLogin();
         }
 
         async function checkAuth() {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await db.auth.getSession();
             if (session) {
                 currentUser = session.user;
                 showApp();
@@ -660,7 +659,7 @@
             }
 
             // Listen for auth changes (OAuth callback)
-            supabase.auth.onAuthStateChange((event, session) => {
+            db.auth.onAuthStateChange((event, session) => {
                 if (event === 'SIGNED_IN' && session) {
                     currentUser = session.user;
                     showApp();
@@ -686,7 +685,7 @@
 
         // ========== Database Operations ==========
         async function fetchEntries() {
-            const { data, error } = await supabase
+            const { data, error } = await db
                 .from('diary_entries')
                 .select('*')
                 .eq('user_id', currentUser.id)
@@ -702,7 +701,7 @@
 
         async function upsertEntry(date, q1, q2, q3) {
             setSyncStatus('syncing');
-            const { error } = await supabase
+            const { error } = await db
                 .from('diary_entries')
                 .upsert({
                     user_id: currentUser.id,
@@ -725,7 +724,7 @@
         }
 
         async function deleteEntryFromDB(date) {
-            const { error } = await supabase
+            const { error } = await db
                 .from('diary_entries')
                 .delete()
                 .eq('user_id', currentUser.id)
